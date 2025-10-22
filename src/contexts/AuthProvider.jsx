@@ -1,49 +1,103 @@
-import { useContext, createContext, useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from "react-router-dom";
 import AuthContext from "./AuthContext";
 // Thay thế axios bằng logic fetch/post của bạn
 
+// Định nghĩa trạng thái khởi tạo cho Context
+export const initialAuthState = {
+    user: null,
+    token: null,
+    isLoading: true,
+    login: (username, password) => Promise.reject(new Error("Login function not implemented")),
+    logout: () => {},
+    isAuthenticated: false,
+};
 
-const AuthProvider = ({ children }) => {
+const API_BASE_URL = 'http://localhost:8080/auth';
+
+export const AuthProvider = ({ children }) => {
+    // Khởi tạo state dựa trên token trong Local Storage
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem("token")); // Lấy token từ local storage
+    const [token, setToken] = useState(localStorage.getItem("jwtToken"));
+    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
 
-    // Hàm Đăng nhập
-    const login = async (data) => {
-        // --- 1. GỌI API LOGIN (VÍ DỤ GIẢ ĐỊNH) ---
-        // Trong thực tế: const response = await axios.post('/api/auth/login', data);
+    // Khởi tạo ban đầu: Kiểm tra token khi refresh
+    useEffect(() => {
+        // Giả định nếu có token thì user hợp lệ (cần gọi thêm API /validate nếu muốn chắc chắn)
+        if (token) {
+            // Trong môi trường thực tế, bạn sẽ cần giải mã token để lấy user info hoặc gọi API
+            // Hiện tại, chúng ta giả định user đã được load ở đâu đó (hoặc load lại từ BE)
+            // Để đơn giản, ta chỉ set isLoading = false
+        }
+        setIsLoading(false);
+    }, [token]);
 
-        // Giả định BE trả về token và user data
-        const fakeToken = "abc12345.jwt.token";
-        const fakeUser = { id: 1, name: data.username, roles: "ADMIN" };
+    // Hàm Đăng nhập - Xử lý phản hồi từ BE sử dụng FETCH API
+    const login = useCallback(async (username, password) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            });
 
-        setToken(fakeToken);
-        setUser(fakeUser);
-        localStorage.setItem("token", fakeToken);
+            // Xử lý lỗi HTTP (ví dụ: 404, 500)
+            if (!response.ok) {
+                // Ném lỗi chung nếu server không phản hồi 2xx
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-        // Chuyển hướng sau khi đăng nhập thành công
-        navigate("/dashboard");
-    };
+            // Parse JSON response
+            /** @type {import('../types/AuthTypes').ApiResponse} */
+            const apiResponse = await response.json();
+
+            // 1. Xử lý trường hợp Backend trả về lỗi nghiệp vụ (Phản hồi Status.ERROR)
+            if (apiResponse.status === 'error') {
+                // apiResponse.response lúc này là List<String> (các lỗi nghiệp vụ)
+                // Ném lỗi với thông báo lỗi đã được nối chuỗi
+                throw new Error(apiResponse.response.join(' | '));
+            }
+
+            // 2. Xử lý trường hợp thành công (Phản hồi Status.SUCCESS)
+            // apiResponse.response lúc này là LoginResponse { token, user }
+            const loginResponse = apiResponse.response;
+
+            // Lưu trữ Token và User vào State & Local Storage
+            localStorage.setItem('jwtToken', loginResponse.token);
+            setToken(loginResponse.token);
+            setUser(loginResponse.user);
+
+            navigate("/landing", { replace: true });
+
+            return loginResponse;
+
+        } catch (error) {
+            // Xử lý lỗi kết nối hoặc lỗi nghiệp vụ đã throw ở trên
+            console.error("Login failed:", error.message);
+            throw error; // Ném lỗi để component Login.jsx có thể bắt và hiển thị
+        }
+    }, [navigate]);
 
     // Hàm Đăng xuất
-    const logout = () => {
+    const logout = useCallback(() => {
+        localStorage.removeItem('jwtToken');
         setToken(null);
         setUser(null);
-        localStorage.removeItem("token");
         navigate("/login", { replace: true });
-    };
+    }, [navigate]);
 
-    // Giá trị Context được cung cấp
-    const contextValue = useMemo(
-        () => ({
-            user,
-            token,
-            login,
-            logout
-        }),
-        [user, token]
-    );
+    // Giá trị Context
+    const contextValue = useMemo(() => ({
+        user,
+        token,
+        isLoading,
+        login,
+        logout,
+        isAuthenticated: !!user && !!token,
+    }), [user, token, isLoading, login, logout]);
 
     return (
         <AuthContext.Provider value={contextValue}>

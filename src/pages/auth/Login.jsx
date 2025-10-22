@@ -1,17 +1,35 @@
 import React, { useState } from 'react';
-import { Form, Button, Container, Row, Col, Card } from 'react-bootstrap';
+// 1. Import thêm Alert để hiển thị lỗi
+import { Form, Button, Container, Row, Col, Card, Alert } from 'react-bootstrap';
 import "bootstrap/dist/css/bootstrap.min.css";
+import useAuth from "../../hooks/useAuth";
 
 const Login = () => {
-    // Sử dụng useState để lưu trữ giá trị của email và password
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
-    // Hàm xử lý khi người dùng nhấn nút submit
-    const handleSubmit = (event) => {
-        event.preventDefault(); // Ngăn trình duyệt reload lại trang
-        alert(`Login with Username: ${username} and Password: ${password}`);
-        // Tại đây, bạn có thể thêm logic gọi API để xác thực người dùng
+    // 3. Lấy hàm 'login' từ Context
+    const { login } = useAuth();
+
+    // 4. Thêm state để xử lý loading và lỗi
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // 5. Cập nhật hàm handleSubmit
+    const handleSubmit = async (event) => {
+        event.preventDefault(); // Ngăn trình duyệt reload
+        setError(null); // Xóa lỗi cũ
+        setLoading(true); // Bắt đầu loading
+
+        try {
+            // Gọi hàm login từ context
+            await login(username, password);
+        } catch (err) {
+            // Bắt lỗi (từ API hoặc lỗi mạng) và hiển thị
+            setError(err.message || 'Login failed. Please try again.');
+        } finally {
+            setLoading(false); // Dừng loading
+        }
     };
 
     return (
@@ -21,34 +39,47 @@ const Login = () => {
                     <Card className="p-4 shadow-sm">
                         <Card.Body>
                             <h2 className="text-center mb-4">Login</h2>
+
+                            {/* 6. Hiển thị thông báo lỗi nếu có */}
+                            {error && (
+                                <Alert variant="danger">
+                                    {error}
+                                </Alert>
+                            )}
+
                             <Form onSubmit={handleSubmit}>
-                                {/* Form Group cho Email */}
+                                {/* ... (Form.Group cho Username giữ nguyên) ... */}
                                 <Form.Group className="mb-3" controlId="formBasicEmail">
-                                    <Form.Label>username</Form.Label>
+                                    <Form.Label>Username</Form.Label>
                                     <Form.Control
                                         type="text"
                                         placeholder="Enter username"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
-                                        required // Bắt buộc nhập
+                                        required
                                     />
                                 </Form.Group>
 
-                                {/* Form Group cho Password */}
+                                {/* ... (Form.Group cho Password giữ nguyên) ... */}
                                 <Form.Group className="mb-3" controlId="formBasicPassword">
-                                    <Form.Label>Mật khẩu</Form.Label>
+                                    <Form.Label>Password</Form.Label>
                                     <Form.Control
                                         type="password"
                                         placeholder="Enter password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        required // Bắt buộc nhập
+                                        required
                                     />
                                 </Form.Group>
 
-                                {/* Nút Đăng nhập */}
-                                <Button variant="primary" type="submit" className="w-100">
-                                    Login
+                                {/* 7. Vô hiệu hóa nút khi đang 'loading' */}
+                                <Button
+                                    variant="primary"
+                                    type="submit"
+                                    className="w-100"
+                                    disabled={loading} // Thêm dòng này
+                                >
+                                    {loading ? 'Logging in...' : 'Login'}
                                 </Button>
                             </Form>
                         </Card.Body>
