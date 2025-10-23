@@ -2,18 +2,37 @@ import React, { useState } from 'react';
 // 1. Import thêm Alert để hiển thị lỗi
 import { Form, Button, Container, Row, Col, Card, Alert } from 'react-bootstrap';
 import "bootstrap/dist/css/bootstrap.min.css";
+
 import useAuth from "../../hooks/useAuth";
+import {Navigate} from "react-router-dom";
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
     // 3. Lấy hàm 'login' từ Context
-    const { login } = useAuth();
+    const { login, isAuthenticated, user } = useAuth();
 
     // 4. Thêm state để xử lý loading và lỗi
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
+
+    // LOGIC ĐIỀU HƯỚNG NẰM Ở ĐÂY (TRONG RENDER)
+    if (isAuthenticated && user) {
+        // Nếu đã đăng nhập, React sẽ render component <Navigate>
+        const userRolesArray = Array.from(user.roles.name || []);
+
+        if (userRolesArray.includes("ROLE_ADMIN")) {
+            return <Navigate to="/admin" replace />;
+        }
+        else if (userRolesArray.includes("ROLE_USER")) {
+            return <Navigate to="/home" replace />;
+        }
+        else {
+            return <Navigate to="/landing" replace />;
+        }
+    }
 
     // 5. Cập nhật hàm handleSubmit
     const handleSubmit = async (event) => {

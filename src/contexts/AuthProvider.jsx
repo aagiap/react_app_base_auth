@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from "react-router-dom";
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {useNavigate} from "react-router-dom";
 import AuthContext from "./AuthContext";
 // Thay thế axios bằng logic fetch/post của bạn
 
@@ -9,13 +9,32 @@ export const initialAuthState = {
     token: null,
     isLoading: true,
     login: (username, password) => Promise.reject(new Error("Login function not implemented")),
-    logout: () => {},
+    logout: () => {
+    },
     isAuthenticated: false,
 };
 
-const API_BASE_URL = 'http://localhost:8080/auth';
+const API_BASE_URL = 'http://localhost:8080';
+// Hàm để gọi API lấy thông tin user từ token
+const profile = async (token) => {
+    const response = await fetch(`${API_BASE_URL}/user/profile`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}` // Gửi token lên
+        }
+    });
 
-export const AuthProvider = ({ children }) => {
+    // SỬA LẠI CHỖ NÀY
+    // Dùng !response.ok để bắt lỗi HTTP (4xx, 5xx)
+    if (!response.ok) {
+        throw new Error(`API call failed with status: ${response.status}`);
+    }
+
+    // Trả về toàn bộ đối tượng JSON (bao gồm status, message, response)
+    return await response.json();
+};
+
+export const AuthProvider = ({children}) => {
     // Khởi tạo state dựa trên token trong Local Storage
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem("jwtToken"));
@@ -36,12 +55,12 @@ export const AuthProvider = ({ children }) => {
     // Hàm Đăng nhập - Xử lý phản hồi từ BE sử dụng FETCH API
     const login = useCallback(async (username, password) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/login`, {
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({username, password}),
             });
 
             // Xử lý lỗi HTTP (ví dụ: 404, 500)
@@ -70,8 +89,6 @@ export const AuthProvider = ({ children }) => {
             setToken(loginResponse.token);
             setUser(loginResponse.user);
 
-            navigate("/landing", { replace: true });
-
             return loginResponse;
 
         } catch (error) {
@@ -79,14 +96,14 @@ export const AuthProvider = ({ children }) => {
             console.error("Login failed:", error.message);
             throw error; // Ném lỗi để component Login.jsx có thể bắt và hiển thị
         }
-    }, [navigate]);
+    }, []);
 
     // Hàm Đăng xuất
     const logout = useCallback(() => {
         localStorage.removeItem('jwtToken');
         setToken(null);
         setUser(null);
-        navigate("/login", { replace: true });
+        navigate("/login", {replace: true});
     }, [navigate]);
 
     // Giá trị Context
@@ -96,8 +113,9 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         login,
         logout,
-        isAuthenticated: !!user && !!token,
-    }), [user, token, isLoading, login, logout]);
+        isAuthenticated: !!token,
+        profile,
+    }), [user, token, isLoading, login, logout, profile]);
 
     return (
         <AuthContext.Provider value={contextValue}>

@@ -9,12 +9,16 @@ import NoAuth from "../pages/NoAuth";
 import MustLogin from "../pages/MustLogin";
 import MustAdmin from "../pages/MustAdmin";
 import Login from "../pages/auth/Login";
-import NotFound from "../components/errors/NotFound";
+import NotFound from "../pages/errors/NotFound";
 import ProtectedRoute from "./ProtectedRoute";
 import AuthProvider from "../contexts/AuthProvider";
-import Unauthorized from "../components/errors/Unauthorized";
+import Unauthorized from "../pages/errors/Unauthorized";
 
 const router = createBrowserRouter([
+    {
+      path: "/landing",
+      element: <NoAuth/>
+    },
     {
         path: "/",
         element: (
@@ -23,8 +27,8 @@ const router = createBrowserRouter([
             </AuthProvider>
         ),
         children: [
-            {path: "/", element: <Navigate to="/landing"/>},
-            {path: "/landing", element: <NoAuth/>},
+            {path: "/", element: <Navigate to="/home"/>},
+            {path: "/home", element: <NoAuth/>},
             {
                 path: "/author",
                 element: (
