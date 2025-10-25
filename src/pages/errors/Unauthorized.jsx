@@ -1,31 +1,25 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { Container, Row, Col, Card, Button } from "react-bootstrap"
+import { Link } from "react-router-dom"
 
 const Unauthorized = () => {
-
     return (
-        <div style={{ textAlign: 'center', padding: '50px', fontFamily: 'Arial, sans-serif' }}>
-            <h1 style={{ fontSize: '100px', color: '#dc3545', margin: '0' }}>401</h1>
-            <h2 style={{ fontSize: '36px', color: '#343a40', marginTop: '10px' }}>Unauthorized Access</h2>
-            <p style={{ fontSize: '18px', color: '#6c757d', marginTop: '20px' }}>
-                You do not have the necessary permissions to view this page, or your session has expired.
-            </p>
-            <Link
-                to="/"
-                style={{
-                    display: 'inline-block',
-                    marginTop: '30px',
-                    padding: '10px 20px',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    textDecoration: 'none',
-                    borderRadius: '5px'
-                }}
-            >
-                Go to Homepage
-            </Link>
-        </div>
-    );
-};
+        <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+            <Row className="w-100">
+                <Col md={6} lg={4} className="mx-auto">
+                    <Card className="p-5 shadow-sm text-center border-danger">
+                        <Card.Body>
+                            <h1 className="text-danger mb-3">403</h1>
+                            <h3 className="mb-3">Access Denied</h3>
+                            <p className="text-muted mb-4">You don't have permission to access this resource.</p>
+                            <Button as={Link} to="/home" variant="primary">
+                                Go to Home
+                            </Button>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+        </Container>
+    )
+}
 
-export default Unauthorized;
+export default Unauthorized

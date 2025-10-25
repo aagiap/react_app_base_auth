@@ -1,128 +1,173 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {useNavigate} from "react-router-dom";
-import AuthContext from "./AuthContext";
-// Thay thế axios bằng logic fetch/post của bạn
+"use client"
 
-// Định nghĩa trạng thái khởi tạo cho Context
-export const initialAuthState = {
-    user: null,
-    token: null,
-    isLoading: true,
-    login: (username, password) => Promise.reject(new Error("Login function not implemented")),
-    logout: () => {
-    },
-    isAuthenticated: false,
-};
+import { createContext, useState, useEffect, useCallback } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
+import { jwtDecode } from "jwt-decode"
+import { TOKEN_KEYS, API_ENDPOINTS, API_BASE_URL } from "../config/Constant"
 
-const API_BASE_URL = 'http://localhost:8080';
-// Hàm để gọi API lấy thông tin user từ token
-const profile = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/user/profile`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}` // Gửi token lên
+const AuthContext = createContext(null)
+
+const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null)
+    const [token, setToken] = useState(localStorage.getItem(TOKEN_KEYS.ACCESS_TOKEN) || null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState(null)
+
+    const navigate = useNavigate()
+    const location = useLocation()
+
+    const refreshToken = useCallback(async () => {
+        try {
+            const refreshTokenValue = localStorage.getItem(TOKEN_KEYS.REFRESH_TOKEN)
+            if (!refreshTokenValue) {
+                throw new Error("No refresh token available")
+            }
+
+            const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.REFRESH_TOKEN}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${refreshTokenValue}`,
+                },
+            })
+
+            if (!response.ok) {
+                throw new Error("Token refresh failed")
+            }
+
+            const data = await response.json()
+            if (data.status === "success" && data.response.token) {
+                const newToken = data.response.token
+                localStorage.setItem(TOKEN_KEYS.ACCESS_TOKEN, newToken)
+                setToken(newToken)
+                return newToken
+            }
+        } catch (err) {
+            console.error("Refresh token error:", err)
+            logout()
+            return null
         }
-    });
+    }, [])
 
-    // SỬA LẠI CHỖ NÀY
-    // Dùng !response.ok để bắt lỗi HTTP (4xx, 5xx)
-    if (!response.ok) {
-        throw new Error(`API call failed with status: ${response.status}`);
+    const login = async (username, password) => {
+        setError(null)
+        try {
+            const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.LOGIN}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ username, password }),
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.message || "Login failed")
+            }
+
+            const data = await response.json()
+
+            if (data.status === "success" && data.response.token) {
+                const newToken = data.response.token
+                const decodedToken = jwtDecode(newToken)
+                const userData = decodedToken.user
+
+                localStorage.setItem(TOKEN_KEYS.ACCESS_TOKEN, newToken)
+                if (data.response.refreshToken) {
+                    localStorage.setItem(TOKEN_KEYS.REFRESH_TOKEN, data.response.refreshToken)
+                }
+
+                setToken(newToken)
+                setUser(userData)
+
+                const userRoles = userData.roles.map((role) => role.name)
+                const targetPath = location.state?.from?.pathname || null
+
+                if (targetPath) {
+                    navigate(targetPath, { replace: true })
+                    return
+                }
+
+                if (userRoles.includes("ROLE_ADMIN")) {
+                    navigate("/admin", { replace: true })
+                } else if (userRoles.includes("ROLE_USER")) {
+                    navigate("/home", { replace: true })
+                } else {
+                    navigate("/home", { replace: true })
+                }
+            } else {
+                throw new Error("Invalid login response structure")
+            }
+        } catch (err) {
+            setError(err.message)
+            throw err
+        }
     }
 
-    // Trả về toàn bộ đối tượng JSON (bao gồm status, message, response)
-    return await response.json();
-};
-
-export const AuthProvider = ({children}) => {
-    // Khởi tạo state dựa trên token trong Local Storage
-    const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem("jwtToken"));
-    const [isLoading, setIsLoading] = useState(true);
-    const navigate = useNavigate();
-
-    // Khởi tạo ban đầu: Kiểm tra token khi refresh
-    useEffect(() => {
-        // Giả định nếu có token thì user hợp lệ (cần gọi thêm API /validate nếu muốn chắc chắn)
-        if (token) {
-            // Trong môi trường thực tế, bạn sẽ cần giải mã token để lấy user info hoặc gọi API
-            // Hiện tại, chúng ta giả định user đã được load ở đâu đó (hoặc load lại từ BE)
-            // Để đơn giản, ta chỉ set isLoading = false
-        }
-        setIsLoading(false);
-    }, [token]);
-
-    // Hàm Đăng nhập - Xử lý phản hồi từ BE sử dụng FETCH API
-    const login = useCallback(async (username, password) => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({username, password}),
-            });
-
-            // Xử lý lỗi HTTP (ví dụ: 404, 500)
-            if (!response.ok) {
-                // Ném lỗi chung nếu server không phản hồi 2xx
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            // Parse JSON response
-            /** @type {import('../types/AuthTypes').ApiResponse} */
-            const apiResponse = await response.json();
-
-            // 1. Xử lý trường hợp Backend trả về lỗi nghiệp vụ (Phản hồi Status.ERROR)
-            if (apiResponse.status === 'error') {
-                // apiResponse.response lúc này là List<String> (các lỗi nghiệp vụ)
-                // Ném lỗi với thông báo lỗi đã được nối chuỗi
-                throw new Error(apiResponse.response.join(' | '));
-            }
-
-            // 2. Xử lý trường hợp thành công (Phản hồi Status.SUCCESS)
-            // apiResponse.response lúc này là LoginResponse { token, user }
-            const loginResponse = apiResponse.response;
-
-            // Lưu trữ Token và User vào State & Local Storage
-            localStorage.setItem('jwtToken', loginResponse.token);
-            setToken(loginResponse.token);
-            setUser(loginResponse.user);
-
-            return loginResponse;
-
-        } catch (error) {
-            // Xử lý lỗi kết nối hoặc lỗi nghiệp vụ đã throw ở trên
-            console.error("Login failed:", error.message);
-            throw error; // Ném lỗi để component Login.jsx có thể bắt và hiển thị
-        }
-    }, []);
-
-    // Hàm Đăng xuất
     const logout = useCallback(() => {
-        localStorage.removeItem('jwtToken');
-        setToken(null);
-        setUser(null);
-        navigate("/login", {replace: true});
-    }, [navigate]);
+        localStorage.removeItem(TOKEN_KEYS.ACCESS_TOKEN)
+        localStorage.removeItem(TOKEN_KEYS.REFRESH_TOKEN)
+        setUser(null)
+        setToken(null)
+        setError(null)
+        navigate("/login")
+    }, [navigate])
 
-    // Giá trị Context
-    const contextValue = useMemo(() => ({
+    useEffect(() => {
+        const initAuth = async () => {
+            setIsLoading(true)
+            const storedToken = localStorage.getItem(TOKEN_KEYS.ACCESS_TOKEN)
+
+            if (!storedToken) {
+                setIsLoading(false)
+                return
+            }
+
+            try {
+                const decodedToken = jwtDecode(storedToken)
+                const currentTime = Date.now() / 1000
+                const timeUntilExpiry = decodedToken.exp - currentTime
+
+                if (timeUntilExpiry < 0) {
+                    logout()
+                } else if (timeUntilExpiry < 300) {
+                    // Token sắp hết hạn → refresh
+                    const newToken = await refreshToken()
+                    if (newToken) {
+                        const newDecoded = jwtDecode(newToken)
+                        setUser(newDecoded.user)
+                    }
+                } else {
+                    // Token còn hạn
+                    setUser(decodedToken.user)
+                    setToken(storedToken)
+                    setTimeout(() => refreshToken(), (timeUntilExpiry - 300) * 1000)
+                }
+            } catch (err) {
+                console.error("Invalid token:", err)
+                logout()
+            } finally {
+                setIsLoading(false)
+            }
+        }
+
+        initAuth()
+    }, [logout, refreshToken])
+
+
+    const contextValue = {
         user,
         token,
+        isAuthenticated: !!user,
         isLoading,
+        error,
         login,
         logout,
-        isAuthenticated: !!token,
-        profile,
-    }), [user, token, isLoading, login, logout, profile]);
+        refreshToken,
+    }
 
-    return (
-        <AuthContext.Provider value={contextValue}>
-            {children}
-        </AuthContext.Provider>
-    );
-};
+    return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+}
 
-
-export default AuthProvider;
+export { AuthContext }
+export default AuthProvider
