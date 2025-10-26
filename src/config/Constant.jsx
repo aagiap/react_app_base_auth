@@ -21,6 +21,13 @@ export const ROLES = {
     USER: "ROLE_USER",
 }
 
+// ApiStatus
+export const API_STATUS = {
+    SUCCESS: "success",
+    ERROR: "error",
+    EXCEPTION: "exception",
+}
+
 // HTTP Status Codes
 export const HTTP_STATUS = {
     OK: 200,
@@ -31,3 +38,14 @@ export const HTTP_STATUS = {
     NOT_FOUND: 404,
     INTERNAL_SERVER_ERROR: 500,
 }
+
+// Routes
+export const ROUTES = {
+    HOME: "/",
+    LOGIN: "/login",
+    ADMIN: "/admin",
+    UNAUTHORIZED: "/unauthorized",
+    UNAUTHENTICATED: "/unauthenticated",
+    NOT_FOUND: "/not-found",
+}
+

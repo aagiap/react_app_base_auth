@@ -6,14 +6,17 @@ import { AuthContext } from "../contexts/AuthProvider"
 /**
  * Custom hook để truy cập AuthContext.
  * @returns {{
- * user: object | null,
+ * user: {
+ * username: string,
+ * roles: {id: number, name: string}[],
+ * id: any
+ * } | null,
  * token: string | null,
  * isAuthenticated: boolean,
  * isLoading: boolean,
- * error: string | null,
- * login: (username, password) => Promise<void>,
+ * login: (token: string) => void,
  * logout: () => void,
- * refreshToken: () => Promise<string | null>
+ * hasRole: (roleName: string) => boolean
  * }}
  */
 const useAuth = () => {

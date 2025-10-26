@@ -2,40 +2,36 @@
 
 import { Navigate, useLocation } from "react-router-dom"
 import useAuth from "../hooks/useAuth"
-import LoadingSpinner from "../components/common/LoadSprinner"
-
+import LoadSpinner from "../components/common/LoadSprinner"
+import { ROUTES } from "../config/Constant"
 /**
- * Component bảo vệ các route, kiểm tra xác thực và quyền hạn.
+ * Component bảo vệ route (PrivateRoute)
+ * Kiểm tra:
+ *  1. Token có tồn tại và còn hạn không
+ *  2. Người dùng có vai trò phù hợp không
+ *
  * @param {object} props
  * @param {React.ReactNode} props.children - Nội dung route cần bảo vệ.
- * @param {string[]} [props.requiredRoles=[]] - Các vai trò bắt buộc (ví dụ: ['ROLE_ADMIN']).
+ * @param {string[]} [props.requiredRoles=[]] - Danh sách vai trò yêu cầu (VD: ['ROLE_ADMIN']).
  */
-const ProtectedRoute = ({ children, requiredRoles = [] }) => {
-    const { user, isLoading, isAuthenticated } = useAuth()
-    const location = useLocation()
+export const ProtectedRoute = ({ children, requiredRoles = [] }) => {
+    const { isAuthenticated, isLoading, hasRole } = useAuth()
 
-    // 1. Đang tải (Chờ kiểm tra token từ Local Storage)
     if (isLoading) {
-        return <LoadingSpinner message="Checking access permissions..." />
+        return <LoadSpinner />
     }
 
-    // 2. Không xác thực (Chưa đăng nhập)
     if (!isAuthenticated) {
-        return <Navigate to="/unauthenticated" state={{ from: location }} replace />
+        return <Navigate to={ROUTES.UNAUTHENTICATED} replace />
     }
 
-    // 3. Kiểm tra vai trò (Authorization)
-    if (requiredRoles.length > 0 && user) {
-        const userRolesArray = user.roles.map((role) => role.name) || []
-
-        const userHasRequiredRole = requiredRoles.some((role) => userRolesArray.includes(role))
-
-        if (!userHasRequiredRole) {
-            return <Navigate to="/unauthorized" state={{ from: location }} replace />
+    if (requiredRoles.length > 0) {
+        const hasRequiredRole = requiredRoles.some((role) => hasRole(role))
+        if (!hasRequiredRole) {
+            return <Navigate to={ROUTES.UNAUTHORIZED} replace />
         }
     }
 
-    // 4. Cho phép truy cập
     return children
 }
 

@@ -1,20 +1,41 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Form, Button, Container, Row, Col, Card, Alert } from "react-bootstrap"
 import useAuth from "../../hooks/useAuth"
-import { Navigate, useLocation } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
+import { ROLES } from "../../config/Constant"
+import AuthApi from "../../services/api/AuthApi"
 
 const Login = () => {
     const [username, setUsername] = useState("")
     const [password, setPassword] = useState("")
     const [validationErrors, setValidationErrors] = useState({})
-
-    const { login, isAuthenticated, user, isLoading } = useAuth()
-    const location = useLocation()
-
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
+
+    const navigate = useNavigate()
+
+    // SỬA Ở ĐÂY: Lấy đúng các giá trị từ useAuth
+    // Bỏ `roles` và thêm `user`, `isAuthenticated`
+    const { login, user, isAuthenticated, isLoading } = useAuth()
+
+    // SỬA Ở ĐÂY: Logic chuyển trang
+    useEffect(() => {
+        // Nếu đã đăng nhập (isAuthenticated = true và có user object)
+        if (isAuthenticated && user && user.roles) {
+            const roleNames = user.roles.map((r) => r.name)
+
+            // Điều hướng dựa trên quyền
+            if (roleNames.includes(ROLES.ADMIN)) {
+                navigate("/admin")
+            } else if (roleNames.includes(ROLES.USER)) {
+                navigate("/home") // Hoặc navigate("/") tùy bạn
+            }
+        }
+        // useEffect này sẽ chạy lại khi `isAuthenticated` hoặc `user` thay đổi
+        // (tức là sau khi gọi hàm login() thành công)
+    }, [isAuthenticated, user, navigate])
 
     const validateForm = () => {
         const errors = {}
@@ -48,7 +69,14 @@ const Login = () => {
         setLoading(true)
 
         try {
-            await login(username, password)
+            const loginResponse = await AuthApi.login(username.trim(), password)
+            if (loginResponse.status === "success") {
+                const token = loginResponse.response.token
+                login(token) // <- Hàm này sẽ trigger AuthProvider cập nhật state
+                             // và useEffect ở trên sẽ tự động chạy
+            } else if (loginResponse.status === "error") {
+                setError(loginResponse.response)
+            }
         } catch (err) {
             setError(err.message || "Login failed. Please try again.")
         } finally {
@@ -56,6 +84,7 @@ const Login = () => {
         }
     }
 
+    // `isLoading` này là của AuthProvider (kiểm tra token lúc tải trang)
     if (isLoading) {
         return (
             <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
@@ -67,13 +96,6 @@ const Login = () => {
                 </div>
             </Container>
         )
-    }
-
-    if (isAuthenticated && user) {
-        const from = location.state?.from?.pathname
-        const userRoles = user.roles.map((r) => r.name)
-        const homePath = userRoles.includes("ROLE_ADMIN") ? "/admin" : "/home"
-        return <Navigate to={from || homePath} replace />
     }
 
     return (
@@ -103,7 +125,6 @@ const Login = () => {
                                                 setValidationErrors((prev) => ({ ...prev, username: "" }))
                                             }
                                         }}
-                                        disabled={loading}
                                         isInvalid={!!validationErrors.username}
                                     />
                                     <Form.Control.Feedback type="invalid">{validationErrors.username}</Form.Control.Feedback>
@@ -121,7 +142,6 @@ const Login = () => {
                                                 setValidationErrors((prev) => ({ ...prev, password: "" }))
                                             }
                                         }}
-                                        disabled={loading}
                                         isInvalid={!!validationErrors.password}
                                     />
                                     <Form.Control.Feedback type="invalid">{validationErrors.password}</Form.Control.Feedback>
@@ -131,16 +151,6 @@ const Login = () => {
                                     {loading ? "Logging in..." : "Login"}
                                 </Button>
                             </Form>
-
-                            <div className="mt-4 p-3 bg-light rounded">
-                                <small className="text-muted">
-                                    <strong>Demo Credentials:</strong>
-                                    <br />
-                                    Admin: admin / admin123
-                                    <br />
-                                    User: user / user123
-                                </small>
-                            </div>
                         </Card.Body>
                     </Card>
                 </Col>
