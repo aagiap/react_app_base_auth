@@ -16,11 +16,10 @@ const Login = () => {
 
     const navigate = useNavigate()
 
-    // SỬA Ở ĐÂY: Lấy đúng các giá trị từ useAuth
-    // Bỏ `roles` và thêm `user`, `isAuthenticated`
+
     const { login, user, isAuthenticated, isLoading } = useAuth()
 
-    // SỬA Ở ĐÂY: Logic chuyển trang
+    // chuyển trang
     useEffect(() => {
         // Nếu đã đăng nhập (isAuthenticated = true và có user object)
         if (isAuthenticated && user && user.roles) {

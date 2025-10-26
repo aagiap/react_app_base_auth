@@ -1,13 +1,6 @@
 // API Configuration
 export const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080"
 
-// API Endpoints
-export const API_ENDPOINTS = {
-    LOGIN: "/auth/login",
-    LOGOUT: "/auth/logout",
-    REFRESH_TOKEN: "/auth/refresh",
-    GET_USER: "/auth/user",
-}
 
 // Token Keys
 export const TOKEN_KEYS = {
@@ -41,11 +34,7 @@ export const HTTP_STATUS = {
 
 // Routes
 export const ROUTES = {
-    HOME: "/",
-    LOGIN: "/login",
-    ADMIN: "/admin",
     UNAUTHORIZED: "/unauthorized",
     UNAUTHENTICATED: "/unauthenticated",
-    NOT_FOUND: "/not-found",
 }
 

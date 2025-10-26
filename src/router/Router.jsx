@@ -10,6 +10,7 @@ import ProtectedRoute from "./ProtectedRoute"
 import Unauthorized from "../pages/errors/Unauthorized"
 import UnAuthenticated from "../pages/errors/UnAuthenticated";
 
+import {ROUTES} from "../config/Constant";
 const RootLayout = () => {
     return (
         <AuthProvider>
@@ -46,11 +47,11 @@ const router = createBrowserRouter([
         ],
     },
     {
-        path: "/unauthorized",
+        path: ROUTES.UNAUTHORIZED,
         element: <Unauthorized />,
     },
     {
-        path: "/unauthenticated",
+        path: ROUTES.UNAUTHENTICATED,
         element: <UnAuthenticated />,
     },
     {

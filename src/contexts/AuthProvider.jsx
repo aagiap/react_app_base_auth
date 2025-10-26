@@ -67,8 +67,7 @@ const AuthProvider = ({ children }) => {
         window.location.replace("/home")
     }, [])
 
-    // Bỏ useEffect cũ đi, vì logic đã được xử lý trong useState-init
-    // Chỉ giữ lại
+
     useEffect(() => {
         setIsLoading(false)
     }, [])
@@ -84,7 +83,7 @@ const AuthProvider = ({ children }) => {
         [authState.roles], // Sửa dependency
     )
 
-    // SỬA LỖI 1: Tạo user object
+    // Tạo user object
     const user = useMemo(
         () => ({
             username: authState.username,
@@ -94,7 +93,7 @@ const AuthProvider = ({ children }) => {
         [authState.username, authState.roles, authState.id],
     )
 
-    // SỬA LỖI 1 & 2: Cung cấp đúng `user` object và `isLoading` state
+
     const value = useMemo(
         () => ({
             isAuthenticated: authState.isAuthenticated,
